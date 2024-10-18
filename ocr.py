@@ -32,12 +32,14 @@ image_dir = "/content/drive/MyDrive/PaymentReceipt/dataset/val/KBZ"
 # Regular expression patterns for extracting fields
 transtype_pattern = re.compile(r"(Transaction Type|Type)\s?:?\s?(.+)")
 notes_pattern = re.compile(r"(Notes|Note|Purpose)\s?:?\s?(.+)")
-transtime_pattern = re.compile(r"(Transaction Time)\s?:?\s?(.+)")
+transtime_pattern = re.compile(r"(Transaction Time|Date and Time|Date & Time)\s?:?\s?(.+)")
 transno_pattern = re.compile(r"(Transaction No|Transaction ID)\s?:?\s?(.+)")
 receiver_pattern = re.compile(r"(To|Receiver Name|Send To)\s?:?\s?(.+)")
 sender_pattern = re.compile(r"(From|Sender Name|Send From)\s?:?\s?(.+)")
 amount_data_pattern = re.compile(r"(Amount|Total Amount)\s?:?\s?(.+)")
 numeric_pattern = re.compile(r"-?(\d+(?:\.\d{2})?)")
+date_time_pattern = re.compile(r"(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{1,2} \w+ \d{4})[\s+]*([0-9:AMP]+)?")
+
 
 def extract_text_from_image(image_path):
     """
@@ -104,56 +106,62 @@ def extract_transaction_data(text):
     
     transaction_data = {
         "Transaction No" : None,
+        "Date": None,
+        "Time": None,
+        "Transaction Time" : None,
         "Transaction Type": None,
         "Sender Name": None,
         "Amount": None,
         "Receiver Name": None,
-        "Date": None,
-        "Time": None,
         "Notes": None
     }
     lines = split_text_into_lines(text)
     for line in lines:        
         # Transaction Time
         if re.search(transtime_pattern, line):
-            transtime_pattern_match = transtime_pattern.search(text)
+            transtime_pattern_match = transtime_pattern.search(line)
             date_time_str  = transtime_pattern_match.group(2).strip()
-
+            transaction_data["Transaction Time"] = date_time_str
+            match = date_time_pattern.search(date_time_str)
+            date_part = match.group(1)  # Extract the date part
+            time_part = match.group(2) if match.group(2) else "No time provided"  
+            transaction_data["Date"] = date_time_str
+            #transaction_data["Date"] = convert_date_format(date_time_str)
             # Split the string into date and time parts
-            date_part, time_part = date_time_str.split()
-            transaction_data["Date"] = convert_date_format(date_part)
+            '''date_part, time_part = date_time_str.split()
+            transaction_data["Date"] = convert_date_format(date_part)'''
             transaction_data["Time"] = time_part
         
         # Transaction No  
         elif re.search(transno_pattern, line):
-             transno_pattern_match = transno_pattern.search(text)
+             transno_pattern_match = transno_pattern.search(line)
              transaction_data["Transaction No"] = transno_pattern_match.group(2).strip()
         
         # transaction_type_pattern
         elif re.search(transtype_pattern, line):
-             transtype_pattern_match = transtype_pattern.search(text)
+             transtype_pattern_match = transtype_pattern.search(line)
              transaction_data["Transaction Type"] = transtype_pattern_match.group(2).strip()
 
         # Sender Name 
         elif re.search(sender_pattern, line):
-             sender_pattern_match = sender_pattern.search(text)
+             sender_pattern_match = sender_pattern.search(line)
              transaction_data["Sender Name"] = sender_pattern_match.group(2).strip()
 
         # Receiver Name 
         elif re.search(receiver_pattern, line):
-             receiver_pattern_match = receiver_pattern.search(text)
+             receiver_pattern_match = receiver_pattern.search(line)
              transaction_data["Receiver Name"] = receiver_pattern_match.group(2).strip()
 
         # Amounts
         elif re.search(amount_data_pattern, line):
-             amount_data_pattern_match = amount_data_pattern.search(text)
+             amount_data_pattern_match = amount_data_pattern.search(line)
              amount_string = amount_data_pattern_match.group(2).strip()
              amount_pattern_match =numeric_pattern.search(amount_string)
              transaction_data["Amount"] = amount_pattern_match.group(1).strip()
 
         # Notes
         elif re.search(notes_pattern, line):
-            notes_match = notes_pattern.search(text)
+            notes_match = notes_pattern.search(line)
             transaction_data["Notes"] = notes_match.group(2).strip()
 
     return transaction_data
@@ -188,9 +196,6 @@ with open(output_json_path, 'w') as json_file:
     json.dump(all_transactions, json_file, indent=4)
 
 print(f"All data saved to {output_json_path}")
-
-# Save the extracted transaction data to a JSON file
-output_json_path = "transactions_data.json"
 with open(output_json_path, 'w') as json_file:
     json.dump(all_transactions, json_file, indent=4)
 
