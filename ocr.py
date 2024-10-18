@@ -30,13 +30,13 @@ desired_format = "%Y/%m/%d"
 image_dir = "/content/drive/MyDrive/PaymentReceipt/dataset/val/KBZ"
 
 # Regular expression patterns for extracting fields
-transtype_pattern = re.compile(r"(Transaction Type|Type)\s?:?\s?(.+)")
-notes_pattern = re.compile(r"(Notes|Note|Purpose)\s?:?\s?(.+)")
-transtime_pattern = re.compile(r"(Transaction Time|Date and Time|Date & Time)\s?:?\s?(.+)")
-transno_pattern = re.compile(r"(Transaction No|Transaction ID)\s?:?\s?(.+)")
-receiver_pattern = re.compile(r"(To|Receiver Name|Send To)\s?:?\s?(.+)")
-sender_pattern = re.compile(r"(From|Sender Name|Send From)\s?:?\s?(.+)")
-amount_data_pattern = re.compile(r"(Amount|Total Amount)\s?:?\s?(.+)")
+transtype_pattern = re.compile(r"^(Transaction Type|Type)\s?:?\s?(.+)")
+notes_pattern = re.compile(r"^(Notes|Note|Purpose)\s?:?\s?(.+)")
+transtime_pattern = re.compile(r"^(Transaction Time|Date and Time|Date & Time)\s?:?\s?(.+)")
+transno_pattern = re.compile(r"^(Transaction No|Transaction ID)\s?:?\s?(.+)")
+receiver_pattern = re.compile(r"^(To|Receiver Name|Send To)\s?:?\s?(.+)")
+sender_pattern = re.compile(r"^(From|Sender Name|Send From)\s?:?\s?(.+)")
+amount_data_pattern = re.compile(r"^(Amount|Total Amount)\s?:?\s?(.+)")
 numeric_pattern = re.compile(r"-?(\d+(?:\.\d{2})?)")
 date_time_pattern = re.compile(r"(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{1,2} \w+ \d{4})[\s+]*([0-9:AMP]+)?")
 
