@@ -30,13 +30,13 @@ desired_format = "%Y/%m/%d"
 image_dir = "/content/drive/MyDrive/PaymentReceipt/dataset/val/KBZ"
 
 # Regular expression patterns for extracting fields
-transtype_pattern = re.compile(r"(Transaction Type)\s?:?\s?(.+)")
-notes_pattern = re.compile(r"(Notes|Purpose)\s?:?\s?(.+)")
+transtype_pattern = re.compile(r"(Transaction Type|Type)\s?:?\s?(.+)")
+notes_pattern = re.compile(r"(Notes|Note|Purpose)\s?:?\s?(.+)")
 transtime_pattern = re.compile(r"(Transaction Time)\s?:?\s?(.+)")
 transno_pattern = re.compile(r"(Transaction No|Transaction ID)\s?:?\s?(.+)")
 receiver_pattern = re.compile(r"(To|Receiver Name|Send To)\s?:?\s?(.+)")
 sender_pattern = re.compile(r"(From|Sender Name|Send From)\s?:?\s?(.+)")
-amount_data_pattern = re.compile(r"(Amount)\s?:?\s?(.+)")
+amount_data_pattern = re.compile(r"(Amount|Total Amount)\s?:?\s?(.+)")
 numeric_pattern = re.compile(r"-?(\d+(?:\.\d{2})?)")
 
 def extract_text_from_image(image_path):
@@ -75,10 +75,10 @@ def extract_text_from_image(image_path):
         pil_image = Img.fromarray(thresh)
 
         # Use Tesseract to do OCR on the image
-        config = "--psm 6"
+        config = "--psm 6" 
         text = pyt.image_to_string(pil_image, config=config, lang='eng')
         return text
-
+    
     except Exception as e:
         print(f"Error processing image {image_path}: {e}")
         return None
@@ -101,7 +101,7 @@ def convert_date_format(date_str):
         return f"Error parsing date: {e}"
 
 def extract_transaction_data(text):
-
+    
     transaction_data = {
         "Transaction No" : None,
         "Transaction Type": None,
@@ -113,7 +113,7 @@ def extract_transaction_data(text):
         "Notes": None
     }
     lines = split_text_into_lines(text)
-    for line in lines:
+    for line in lines:        
         # Transaction Time
         if re.search(transtime_pattern, line):
             transtime_pattern_match = transtime_pattern.search(text)
@@ -123,23 +123,23 @@ def extract_transaction_data(text):
             date_part, time_part = date_time_str.split()
             transaction_data["Date"] = convert_date_format(date_part)
             transaction_data["Time"] = time_part
-
-        # Transaction No
+        
+        # Transaction No  
         elif re.search(transno_pattern, line):
              transno_pattern_match = transno_pattern.search(text)
              transaction_data["Transaction No"] = transno_pattern_match.group(2).strip()
-
+        
         # transaction_type_pattern
         elif re.search(transtype_pattern, line):
              transtype_pattern_match = transtype_pattern.search(text)
              transaction_data["Transaction Type"] = transtype_pattern_match.group(2).strip()
 
-        # Sender Name
+        # Sender Name 
         elif re.search(sender_pattern, line):
              sender_pattern_match = sender_pattern.search(text)
              transaction_data["Sender Name"] = sender_pattern_match.group(2).strip()
 
-        # Receiver Name
+        # Receiver Name 
         elif re.search(receiver_pattern, line):
              receiver_pattern_match = receiver_pattern.search(text)
              transaction_data["Receiver Name"] = receiver_pattern_match.group(2).strip()
@@ -181,6 +181,13 @@ for filename in os.listdir(image_dir):
 
         except Exception as e:
             print(f"Failed to process {filename}: {e}")
+
+# Save the extracted transaction data to a JSON file
+output_json_path = "transactions_data.json"
+with open(output_json_path, 'w') as json_file:
+    json.dump(all_transactions, json_file, indent=4)
+
+print(f"All data saved to {output_json_path}")
 
 # Save the extracted transaction data to a JSON file
 output_json_path = "transactions_data.json"
