@@ -8,9 +8,11 @@ Original file is located at
 """
 
 # Installer
-#!sudo apt-get install tesseract-ocr
-#!pip install pytesseract
-#!pip install python-dateutil
+'''!sudo apt-get install tesseract-ocr
+!pip install pytesseract
+!pip install python-dateutil
+from google.colab import drive
+drive.mount('/content/drive')'''
 
 import os
 import json
@@ -21,9 +23,6 @@ import pytesseract as pyt
 import re
 from dateutil import parser
 
-#from google.colab import drive
-#drive.mount('/content/drive')
-
 pyt.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
 
 desired_format = "%Y/%m/%d"
@@ -31,8 +30,8 @@ image_dir = "/content/drive/MyDrive/PaymentReceipt/dataset/val/KBZ"
 
 # Regular expression patterns for extracting fields
 transtype_pattern = re.compile(r"^(Transaction Type|Type)\s?:?\s?(.+)")
-notes_pattern = re.compile(r"^(Notes|Note|Purpose)\s?:?\s?(.+)")
-transtime_pattern = re.compile(r"^(Transaction Time|Date and Time|Date & Time)\s?:?\s?(.+)")
+notes_pattern = re.compile(r"^(Notes|Note|Purpose|Reason)\s?:?\s?(.+)")
+transtime_pattern = re.compile(r"^(Transaction Time|Date and Time|Date & Time|Transaction Date)\s?:?\s?(.+)")
 transno_pattern = re.compile(r"^(Transaction No|Transaction ID)\s?:?\s?(.+)")
 receiver_pattern = re.compile(r"^(To|Receiver Name|Send To)\s?:?\s?(.+)")
 sender_pattern = re.compile(r"^(From|Sender Name|Send From)\s?:?\s?(.+)")
@@ -71,16 +70,19 @@ def extract_text_from_image(image_path):
 
         # Apply a threshold to convert the image to binary (black and white)
         # Adjust the threshold value to ensure better extraction of gray text
-        _, thresh = cv2.threshold(sharpened, 150, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        _, thresh = cv2.threshold(sharpened, 200, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+        # Inpainting to remove the watermark
+        result = cv2.inpaint(img, thresh, inpaintRadius=3, flags=cv2.INPAINT_TELEA)
 
         # Convert back to a PIL image
         pil_image = Img.fromarray(thresh)
 
         # Use Tesseract to do OCR on the image
-        config = "--psm 6" 
+        config = "--psm 6"
         text = pyt.image_to_string(pil_image, config=config, lang='eng')
         return text
-    
+
     except Exception as e:
         print(f"Error processing image {image_path}: {e}")
         return None
@@ -103,7 +105,7 @@ def convert_date_format(date_str):
         return f"Error parsing date: {e}"
 
 def extract_transaction_data(text):
-    
+
     transaction_data = {
         "Transaction No" : None,
         "Date": None,
@@ -116,38 +118,39 @@ def extract_transaction_data(text):
         "Notes": None
     }
     lines = split_text_into_lines(text)
-    for line in lines:        
+    for line in lines:
+        print(line)
         # Transaction Time
         if re.search(transtime_pattern, line):
             transtime_pattern_match = transtime_pattern.search(line)
             date_time_str  = transtime_pattern_match.group(2).strip()
             transaction_data["Transaction Time"] = date_time_str
-            match = date_time_pattern.search(date_time_str)
+            '''match = date_time_pattern.search(date_time_str)
             date_part = match.group(1)  # Extract the date part
-            time_part = match.group(2) if match.group(2) else "No time provided"  
+            time_part = match.group(2) if match.group(2) else "No time provided"
             transaction_data["Date"] = date_time_str
             #transaction_data["Date"] = convert_date_format(date_time_str)
             # Split the string into date and time parts
-            '''date_part, time_part = date_time_str.split()
-            transaction_data["Date"] = convert_date_format(date_part)'''
-            transaction_data["Time"] = time_part
-        
-        # Transaction No  
+            date_part, time_part = date_time_str.split()
+            transaction_data["Date"] = convert_date_format(date_part)
+            transaction_data["Time"] = time_part'''
+
+        # Transaction No
         elif re.search(transno_pattern, line):
              transno_pattern_match = transno_pattern.search(line)
              transaction_data["Transaction No"] = transno_pattern_match.group(2).strip()
-        
+
         # transaction_type_pattern
         elif re.search(transtype_pattern, line):
              transtype_pattern_match = transtype_pattern.search(line)
              transaction_data["Transaction Type"] = transtype_pattern_match.group(2).strip()
 
-        # Sender Name 
+        # Sender Name
         elif re.search(sender_pattern, line):
              sender_pattern_match = sender_pattern.search(line)
              transaction_data["Sender Name"] = sender_pattern_match.group(2).strip()
 
-        # Receiver Name 
+        # Receiver Name
         elif re.search(receiver_pattern, line):
              receiver_pattern_match = receiver_pattern.search(line)
              transaction_data["Receiver Name"] = receiver_pattern_match.group(2).strip()
@@ -177,7 +180,8 @@ for filename in os.listdir(image_dir):
         try:
             # Extract text using Tesseract
             extracted_text = extract_text_from_image(image_path)
-            print(f"Extracted data from {filename}: \n{extracted_text}\n")
+            print(f"Extracted data from {filename}")
+            #print(f"Extracted data from {filename}: \n{extracted_text}\n")
 
             # Extract transaction information using regex
             transaction_info = extract_transaction_data(extracted_text)
@@ -192,10 +196,6 @@ for filename in os.listdir(image_dir):
 
 # Save the extracted transaction data to a JSON file
 output_json_path = "transactions_data.json"
-with open(output_json_path, 'w') as json_file:
-    json.dump(all_transactions, json_file, indent=4)
-
-print(f"All data saved to {output_json_path}")
 with open(output_json_path, 'w') as json_file:
     json.dump(all_transactions, json_file, indent=4)
 
