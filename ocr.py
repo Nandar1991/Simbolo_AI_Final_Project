@@ -36,9 +36,7 @@ transno_pattern = re.compile(r"^(Transaction No|Transaction ID)\s?:?\s?(.+)")
 receiver_pattern = re.compile(r"^(To|Receiver Name|Send To)\s?:?\s?(.+)")
 sender_pattern = re.compile(r"^(From|Sender Name|Send From)\s?:?\s?(.+)")
 amount_data_pattern = re.compile(r"^(Amount|Total Amount)\s?:?\s?(.+)")
-numeric_pattern = re.compile(r"-?(\d+(?:\.\d{2})?)")
-date_time_pattern = re.compile(r"(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{1,2} \w+ \d{4})[\s+]*([0-9:AMP]+)?")
-
+numeric_pattern = re.compile(r"-?(\d+(?:\.\d{2})?)")  
 
 def extract_text_from_image(image_path):
     """
@@ -91,18 +89,50 @@ def extract_text_from_image(image_path):
 def split_text_into_lines(text):
     lines = text.split('\n')
     return [line.strip() for line in lines if line.strip()]
+        
+def extract_date_time(date_time_str):
+    """
+    Extracts date and time from the input string using regex and dateutil parser.
 
-# Convert any date format to a desired format
-def convert_date_format(date_str):
+    :param date_time_str: String containing date and time
+    :return: Tuple of (date, time)
+    """
+    # List to store the extracted date and time
+    extracted_data = []
+
+    # Define regular expressions to match different date and time formats
+    date_pattern = re.compile(r"(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{1,2} \w+ \d{4}|\w+ \d{1,2}, \d{4})")
+    time_pattern = re.compile(r"\b((1[0-2]|0?[1-9]):[0-5][0-9](?::[0-5][0-9])?\s?[APap][Mm]|(2[0-3]|[01]?[0-9]):[0-5][0-9](?::[0-5][0-9])?)\b")  
+
     try:
-        # Parse the date string into a datetime object
-        date_obj = parser.parse(date_str)
-
-        # Format the date object into the desired format
-        formatted_date = date_obj.strftime(desired_format)
-        return formatted_date
+          # Search date and time matches in the input string
+          date_match = date_pattern.search(date_time_str)
+          times_match = time_pattern.search(date_time_str) 
+    
+          # Parse the date part
+          try:
+              if date_match:
+                date_obj = parser.parse(date_match.group())
+                formatted_date = date_obj.strftime("%Y/%m/%d")
+              else:
+                formatted_date = ""
+          except:
+                formatted_date = ""
+          
+          # Parse the time part
+          try:
+              if times_match:
+                time_obj = parser.parse(times_match.group())
+                formatted_time = time_obj.strftime("%H:%M:%S")
+              else:
+                formatted_time = ""
+          except:
+                formatted_time = ""
+        
     except Exception as e:
-        return f"Error parsing date: {e}"
+           print(f"Error parsing date or time: {e}")
+
+    return formatted_date, formatted_time
 
 def extract_transaction_data(text):
 
@@ -119,21 +149,12 @@ def extract_transaction_data(text):
     }
     lines = split_text_into_lines(text)
     for line in lines:
-        print(line)
         # Transaction Time
         if re.search(transtime_pattern, line):
             transtime_pattern_match = transtime_pattern.search(line)
             date_time_str  = transtime_pattern_match.group(2).strip()
-            transaction_data["Transaction Time"] = date_time_str
-            '''match = date_time_pattern.search(date_time_str)
-            date_part = match.group(1)  # Extract the date part
-            time_part = match.group(2) if match.group(2) else "No time provided"
-            transaction_data["Date"] = date_time_str
-            #transaction_data["Date"] = convert_date_format(date_time_str)
-            # Split the string into date and time parts
-            date_part, time_part = date_time_str.split()
-            transaction_data["Date"] = convert_date_format(date_part)
-            transaction_data["Time"] = time_part'''
+            transaction_data["Transaction Time"] = date_time_str            
+            transaction_data["Date"], transaction_data["Time"] = extract_date_time(date_time_str)     
 
         # Transaction No
         elif re.search(transno_pattern, line):
@@ -193,6 +214,13 @@ for filename in os.listdir(image_dir):
 
         except Exception as e:
             print(f"Failed to process {filename}: {e}")
+
+# Save the extracted transaction data to a JSON file
+output_json_path = "transactions_data.json"
+with open(output_json_path, 'w') as json_file:
+    json.dump(all_transactions, json_file, indent=4)
+
+print(f"All data saved to {output_json_path}")
 
 # Save the extracted transaction data to a JSON file
 output_json_path = "transactions_data.json"
