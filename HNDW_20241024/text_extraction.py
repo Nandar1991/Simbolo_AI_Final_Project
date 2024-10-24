@@ -242,9 +242,9 @@ def extract_transaction_data(text):
                     notes_content = match.group(2).strip()
                     transaction_data["Notes"] = notes_content or None
                     logging.info(f"Extracted Notes: {transaction_data['Notes']}")
-
+                
+                # HNDW 2024/10/24 Start (change)
                 elif field == "amount_only":
-                    # HNDW 2024/10/24 Start (change)
                     amount_only_extracted = match.group(1).replace("-", "").strip()
                     logging.info(
                         f"Extracted Amount (from amount only pattern): {amount_only_extracted}"
